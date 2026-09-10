@@ -4,7 +4,7 @@ import dectrails from "./DEC_Trails.json" with {type: 'json'};
 const map = new maplibregl.Map({
     container: 'map',
     zoom: 6,
-    center: [-72.9150899566626, 42.25956997955441],
+    center: [-75, 43],
 });
 
 map.setStyle({
@@ -31,6 +31,10 @@ map.setStyle({
             "dectrails_json": {
                 "type": "geojson",
                 "data": dectrails
+            },
+            "stateSrc": {
+                "type": "geojson",
+                "data": "https://nysgeohub.ny.gov/arcgis/rest/services/Boundaries/NYS_Civil_Boundaries/FeatureServer/0/query?where=1=1&outFields=*&returnGeometry=true&f=geojson"
             }
         },
         "layers": [{
@@ -51,8 +55,20 @@ map.setStyle({
                 'source': 'dectrails_json',
                 'paint': {
                     'line-color': '#ffffff',
-                    'line-opacity': 0.4,
-                    'line-width': 15,
+                    'line-opacity': 0.8,
+                    'line-width': 8,
+                }
+            },
+            {
+                "id": "state",
+                "source": "stateSrc",
+                "type": "fill",
+                "paint": {
+                    'fill-opacity' : 0.5,
+                    'fill-color': '#ffffff'
+                    // 'line-color': '#770000',
+                    // 'line-opacity': 0.8,
+                    // 'line-width': 8,
                 }
             }
         ],
@@ -94,12 +110,120 @@ map.addControl(
 //     }
 // })
 
-let mapdiv = document.getElementById("map");
-mapdiv.addEventListener('click', (w) => {
-    console.log(w);
+const Grid = new Map();
+// let latlonToKey = (e) => new Int16Array([Math.round(e[0]), Math.round(e[1])]);
+let latlonToKey = (e) => Math.round(e[0]) + "," + Math.round(e[1]);
+const arr = dectrails["features"];
+
+for (let i = 0; i < arr.length; ++i) {
+    const coords = arr[i]["geometry"]["coordinates"];
+
+    for (let j = 0; j < coords.length; ++j) {
+        let key = latlonToKey(coords[j]);
+        let pt_index = {"ftIndex": i, "coord": coords[j]};
+
+        if (Grid.has(key)) {
+            var keyarr = Grid.get(key);
+            keyarr.push(pt_index);
+            // Grid.set(key, keyarr);
+
+        } else {
+            Grid.set(key, [pt_index]);
+        }
+    }
+
+}
+
+console.log(Grid);
+
+const PI = 3.14159;
+
+function distance(ll1, ll2) {
+    const R = 6371000;
+    let [lat1, lon1] = ll1;
+    let [lat2, lon2] = ll2;
+    let φ1 = lat1 * PI/180;
+    let φ2 = lat2 * PI/180;
+    let Δφ = (lat2-lat1) * PI/180;
+    let Δλ = (lon2-lon1) * PI/180;
+
+    let a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     
-    console.log(map(w));
-});
+    return R * c;
+}
+
+function getClosestPts(point, numclosest) {
+    // var k = latlonToKey(point);
+
+    let mindists = [];
+    let mindist_pts = [];
+    for (let i = 0; i < numclosest; ++i) {
+        mindists.push(1000000.0);
+        mindist_pts.push(null);
+    }
+
+    // console.log("Hi!!");
+
+    [-1, 0, 1].forEach((dx) => {
+        [-1, 0, 1].forEach((dy) => {
+            
+            let dxdyk = latlonToKey([point[0] + dx, point[1] + dy]);
+            // console.log(dxdyk);
+            if (Grid.has(dxdyk)) {
+                var gridSec = Grid.get(dxdyk);
+                // console.log(gridSec);
+
+                gridSec.forEach(element => {
+                    let dist = distance(element.coord, point);
+                    if (dist < mindist) {
+                        mindist = dist;
+                        mindist_pt = element;
+                        // console.log(mindist);
+                    }
+                });
+            }
+        });
+    });
+
+    return mindist_pt;
+}
+
+// Calculating a list of intersections
+
+for (let i = 0; i < arr.length; ++i) {
+    const coords = arr[i]["geometry"]["coordinates"];
+
+    // check ends!
+
+    let sndclosest_start = getClosestPts(coords[0])[1];
+
+    let sndclosest_end = getClosestPts(coords[-1])[1];
+
+    for (let j = 0; j < coords.length; ++j) {
+    }
+
+}
+
+
+
+
+map.on('click', (e) => {
+    let loc = e.lngLat;
+    // console.log(loc);
+    
+    let locll = [loc.lng, loc.lat];
+    console.log(locll);
+    console.log(getClosestPts(locll));
+
+})
+
+// let mapdiv = document.getElementById("map");
+// mapdiv.addEventListener('click', (w) => {
+//     console.log(w);
+    
+//     console.log(map(w));
+// });
 
 
 // LineString
