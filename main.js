@@ -80,6 +80,59 @@ map.setStyle({
     }
 );
 
+let pt_counter = 0;
+// function addPoint(location) {
+//     map.addSource("point_" + ++pt_counter + "_addPoint",
+//     {
+//         "type": "geojson",
+//         "data": {
+//             "type": "FeatureCollection",
+//             "features": [{
+//                 "type": "Feature",
+//                 "properties": {},
+//                 "geometry": {
+//                     "type": "Point",
+//                     "coordinates": location}
+//             }]
+//         }
+//     });
+// }
+
+function addPoints(locations) {
+    let ptFeatures = locations.map(location => {
+        return {"type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Point",
+                "coordinates": location
+            }
+        };
+    });
+
+    map.addSource("points_source_" + pt_counter + "_addPoints",
+    {
+        "type": "geojson",
+        "data": {
+            "type": "FeatureCollection",
+            "features": ptFeatures
+        }
+    });
+
+    map.addLayer( 
+        {
+                "id": "points_layer_" + pt_counter + "_addPoints",
+                "source": "points_source_" + pt_counter + "_addPoints",
+                "type": "point",
+                "paint": {
+                    'point-opacity' : 0.5,
+                    'point-color': '#ffffff'
+                    // 'line-width': 8,
+                }
+            })
+
+    pt_counter++;
+}
+
 map.addControl(
     new maplibregl.NavigationControl({
         visualizePitch: true,
@@ -113,10 +166,10 @@ map.addControl(
 const Grid = new Map();
 // let latlonToKey = (e) => new Int16Array([Math.round(e[0]), Math.round(e[1])]);
 let latlonToKey = (e) => Math.round(e[0]) + "," + Math.round(e[1]);
-const arr = dectrails["features"];
+const path_arr = dectrails["features"];
 
-for (let i = 0; i < arr.length; ++i) {
-    const coords = arr[i]["geometry"]["coordinates"];
+for (let i = 0; i < path_arr.length; ++i) {
+    const coords = path_arr[i]["geometry"]["coordinates"];
 
     for (let j = 0; j < coords.length; ++j) {
         let key = latlonToKey(coords[j]);
@@ -176,32 +229,63 @@ function getClosestPts(point, numclosest) {
 
                 gridSec.forEach(element => {
                     let dist = distance(element.coord, point);
-                    if (dist < mindist) {
-                        mindist = dist;
-                        mindist_pt = element;
-                        // console.log(mindist);
+                    // if (dist < mindist) {
+                        // mindist = dist;
+                        // mindist_pt = element;
+                    // let inserted = false;
+                    let prev_pt = null;
+                    let prev_dist = null;
+
+                    for (let i = 0; i < numclosest; ++i) {
+                        if (prev_pt != null) {
+                            let pt_temp = mindist_pts[i];
+                            let ds_temp = mindists[i];
+                            
+                            mindist_pts[i] = prev_pt;
+                            mindists[i] = prev_dist;
+
+                            prev_dist = ds_temp;
+                            prev_pt = pt_temp;
+
+                            // swap the value in prev__ and mindist___[i]
+                            // until the end
+                        }
+                        // the array is sorted from loast to greatest already
+                        // once dist is > some value, all values before it  
+                        if (dist < mindists[i]) {
+                            prev_dist = mindists[i];
+                            prev_pt = mindist_pts[i];
+
+                            mindist_pts[i] = element;
+                            mindists[i] = dist;
+                        }                        
                     }
+                        // console.log(mindist);
+                    // }
                 });
             }
         });
     });
 
-    return mindist_pt;
+    return mindist_pts;
+    // if (numclosest == 1) return mindist_pts[0];
 }
 
 // Calculating a list of intersections
+let points = [];
 
-for (let i = 0; i < arr.length; ++i) {
-    const coords = arr[i]["geometry"]["coordinates"];
+for (let i = 0; i < path_arr.length; ++i) {
+    const coords = path_arr[i]["geometry"]["coordinates"];
 
     // check ends!
 
-    let sndclosest_start = getClosestPts(coords[0])[1];
+    // let sndclosest_start = getClosestPts(coords[0], 2)[1];
 
-    let sndclosest_end = getClosestPts(coords[-1])[1];
+    // let sndclosest_end = getClosestPts(coords[-1], 2)[1];
 
-    for (let j = 0; j < coords.length; ++j) {
-    }
+    // for (let j = 0; j < coords.length; ++j) {
+    //     getClosestPts(coords[-1], 2)[1];
+    // }
 
 }
 
@@ -213,8 +297,8 @@ map.on('click', (e) => {
     // console.log(loc);
     
     let locll = [loc.lng, loc.lat];
-    console.log(locll);
-    console.log(getClosestPts(locll));
+    // console.log(locll);
+    console.log(getClosestPts(locll, 3));
 
 })
 
