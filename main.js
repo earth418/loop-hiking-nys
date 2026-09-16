@@ -98,7 +98,28 @@ let pt_counter = 0;
 //     });
 // }
 
+function removePoints(index) {
+    map.removeLayer("points_layer_" + index + "_addPoints");
+    map.removeSource("points_source_" + index + "_addPoints");
+}
+
+
+// console.log(loc);
+    // try {
+    //     map.addSource("ctrl_src", {
+    //         type: "geojson",
+    //         data: { type: "Feature", properties: {},
+    //                 geometry: { type: "Point", coordinates: [e.lngLat.lng, e.lngLat.lat] } }
+    //     });
+    //     map.addLayer({ id: "ctrl_layer", source: "ctrl_src", type: "circle",
+    //                    paint: { "circle-radius": 8, "circle-color": "#f00" }});
+    //     console.log("CONTROL LAYER OK");
+    // } catch (err) {
+    //     console.error("CONTROL FAILED:", err);
+    // }
+
 function addPoints(locations) {
+
     let ptFeatures = locations.map(location => {
         return {"type": "Feature",
             "properties": {},
@@ -122,15 +143,16 @@ function addPoints(locations) {
         {
                 "id": "points_layer_" + pt_counter + "_addPoints",
                 "source": "points_source_" + pt_counter + "_addPoints",
-                "type": "point",
+                "type": "circle",
                 "paint": {
-                    'point-opacity' : 0.5,
-                    'point-color': '#ffffff'
+                    'circle-opacity' : 1.0,
+                    'circle-color': '#0000ff',
+                    'circle-radius': 10
                     // 'line-width': 8,
                 }
             })
 
-    pt_counter++;
+    return pt_counter++;
 }
 
 map.addControl(
@@ -173,7 +195,7 @@ for (let i = 0; i < path_arr.length; ++i) {
 
     for (let j = 0; j < coords.length; ++j) {
         let key = latlonToKey(coords[j]);
-        let pt_index = {"ftIndex": i, "coord": coords[j]};
+        let pt_index = {"ftIndex": i, "coord": coords[j], "parentPathIndex" : i};
 
         if (Grid.has(key)) {
             var keyarr = Grid.get(key);
@@ -187,7 +209,7 @@ for (let i = 0; i < path_arr.length; ++i) {
 
 }
 
-console.log(Grid);
+// console.log(Grid);
 
 const PI = 3.14159;
 
@@ -209,12 +231,12 @@ function distance(ll1, ll2) {
 function getClosestPts(point, numclosest) {
     // var k = latlonToKey(point);
 
-    let mindists = [];
+    // let mindists = [];
     let mindist_pts = [];
-    for (let i = 0; i < numclosest; ++i) {
-        mindists.push(1000000.0);
-        mindist_pts.push(null);
-    }
+    // for (let i = 0; i < numclosest; ++i) {
+    //     mindists.push(1000000.0);
+    //     mindist_pts.push(null);
+    // }
 
     // console.log("Hi!!");
 
@@ -222,53 +244,21 @@ function getClosestPts(point, numclosest) {
         [-1, 0, 1].forEach((dy) => {
             
             let dxdyk = latlonToKey([point[0] + dx, point[1] + dy]);
-            // console.log(dxdyk);
             if (Grid.has(dxdyk)) {
                 var gridSec = Grid.get(dxdyk);
-                // console.log(gridSec);
 
                 gridSec.forEach(element => {
                     let dist = distance(element.coord, point);
-                    // if (dist < mindist) {
-                        // mindist = dist;
-                        // mindist_pt = element;
-                    // let inserted = false;
-                    let prev_pt = null;
-                    let prev_dist = null;
-
-                    for (let i = 0; i < numclosest; ++i) {
-                        if (prev_pt != null) {
-                            let pt_temp = mindist_pts[i];
-                            let ds_temp = mindists[i];
-                            
-                            mindist_pts[i] = prev_pt;
-                            mindists[i] = prev_dist;
-
-                            prev_dist = ds_temp;
-                            prev_pt = pt_temp;
-
-                            // swap the value in prev__ and mindist___[i]
-                            // until the end
-                        }
-                        // the array is sorted from loast to greatest already
-                        // once dist is > some value, all values before it  
-                        if (dist < mindists[i]) {
-                            prev_dist = mindists[i];
-                            prev_pt = mindist_pts[i];
-
-                            mindist_pts[i] = element;
-                            mindists[i] = dist;
-                        }                        
-                    }
-                        // console.log(mindist);
-                    // }
+                    mindist_pts.push({d: dist, element: element});
                 });
             }
         });
     });
 
-    return mindist_pts;
-    // if (numclosest == 1) return mindist_pts[0];
+
+    mindist_pts.sort((a, b) => a.d - b.d);
+
+    return mindist_pts.slice(0, numclosest).map(c => c.element);
 }
 
 // Calculating a list of intersections
@@ -284,23 +274,60 @@ for (let i = 0; i < path_arr.length; ++i) {
     // let sndclosest_end = getClosestPts(coords[-1], 2)[1];
 
     // for (let j = 0; j < coords.length; ++j) {
-    //     getClosestPts(coords[-1], 2)[1];
+    //     getClosestPts(coords[j], 3)[0];
     // }
 
 }
+// console.log("rendered:", map.queryRenderedFeatures({
+//     layers: []
+// }).length);
 
-
-
+let last_added = 0;
 
 map.on('click', (e) => {
     let loc = e.lngLat;
-    // console.log(loc);
+    
     
     let locll = [loc.lng, loc.lat];
     // console.log(locll);
-    console.log(getClosestPts(locll, 3));
+    let pts = getClosestPts(locll, 5);
+    // let pt_coords = []
+    // pts.forEach((w) => {
+    //     pt_coords.push(w.coords)
+    //     console.log(w.coords);
+    // })
+
+    addPoints(pts.map(w => w.coord))
+    console.log(pts);
+
+    console.log(map.getStyle().layers);
+
+    // console.log("rendered:", map.queryRenderedFeatures({
+    // layers: ["points_layer_" + (pt_counter-1) + "_addPoints"],
+    // }));
 
 })
+
+
+
+
+// map.on('mouseenter', 'dectrails', () => {
+//     map.getCanvas().style.cursor = 'pointer';
+// });
+
+// // Change it back to a pointer when it leaves.
+// map.on('mouseleave', 'dectrails', () => {
+//     map.getCanvas().style.cursor = '';
+// });
+
+
+// map.on('click', 'dectrails', (e) => {
+//     new maplibregl.Popup()
+//         .setLngLat(e.lngLat)
+//         .setHTML(e.features[0].properties.name)
+//         .addTo(map);
+// });
+
 
 // let mapdiv = document.getElementById("map");
 // mapdiv.addEventListener('click', (w) => {
