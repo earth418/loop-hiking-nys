@@ -37,11 +37,12 @@ map.setStyle({
                 "data": "https://nysgeohub.ny.gov/arcgis/rest/services/Boundaries/NYS_Civil_Boundaries/FeatureServer/0/query?where=1=1&outFields=*&returnGeometry=true&f=geojson"
             }
         },
-        "layers": [{
-                "id": "satellite",
-                "type": "raster",
-                "source": "satelliteSrc"
-            },
+        "layers": [
+            // {
+            //     "id": "satellite",
+            //     "type": "raster",
+            //     "source": "satelliteSrc"
+            // },
             {
                 "id": "hillshade",
                 "type": "hillshade",
@@ -54,7 +55,7 @@ map.setStyle({
                 'type': 'line',
                 'source': 'dectrails_json',
                 'paint': {
-                    'line-color': '#ffffff',
+                    'line-color': '#aaaaaa',
                     'line-opacity': 0.8,
                     'line-width': 8,
                 }
@@ -65,7 +66,7 @@ map.setStyle({
                 "type": "fill",
                 "paint": {
                     'fill-opacity' : 0.5,
-                    'fill-color': '#ffffff'
+                    'fill-color': '#000000'
                     // 'line-color': '#770000',
                     // 'line-opacity': 0.8,
                     // 'line-width': 8,
@@ -155,6 +156,29 @@ function addPoints(locations) {
     return pt_counter++;
 }
 
+function addLine(lineIndex) {
+    map.addSource("src_line" + lineIndex,
+        {
+            "type":"geojson",
+            "data": dectrails["features"][lineIndex]
+        });
+
+    map.addLayer({
+        "id": "layer_line" + lineIndex,
+        "source": "src_line"+lineIndex,
+        "type":"line",
+        "paint": {
+            'line-color': '#ffa2a2',
+            'line-opacity': 0.8,
+            'line-width': 8,
+        }
+    })
+}
+
+// function addLine(linePoints) {
+
+// }
+
 map.addControl(
     new maplibregl.NavigationControl({
         visualizePitch: true,
@@ -228,22 +252,13 @@ function distance(ll1, ll2) {
     return R * c;
 }
 
-function getClosestPts(point, numclosest) {
-    // var k = latlonToKey(point);
-
-    // let mindists = [];
+function allClosestPts(point) {
     let mindist_pts = [];
-    // for (let i = 0; i < numclosest; ++i) {
-    //     mindists.push(1000000.0);
-    //     mindist_pts.push(null);
-    // }
-
-    // console.log("Hi!!");
 
     [-1, 0, 1].forEach((dx) => {
         [-1, 0, 1].forEach((dy) => {
             
-            let dxdyk = latlonToKey([point[0] + dx, point[1] + dy]);
+            let dxdyk = latlonToKey([Math.round(point[0]) + dx, Math.round(point[1]) + dy]);
             if (Grid.has(dxdyk)) {
                 var gridSec = Grid.get(dxdyk);
 
@@ -257,32 +272,62 @@ function getClosestPts(point, numclosest) {
 
 
     mindist_pts.sort((a, b) => a.d - b.d);
+    return mindist_pts;
+}
+
+function getNClosestPts(point, numclosest) {
+    // var k = latlonToKey(point);
+    mindist_pts = allClosestPts(point);
 
     return mindist_pts.slice(0, numclosest).map(c => c.element);
+}
+function getPointsCloserThan(point, distance) {
+    mindist_pts = allClosestPts(point);
+
+    return mindist_pts.filter(w => w.dist < distance).map(c => c.element);
 }
 
 // Calculating a list of intersections
 let points = [];
 
-for (let i = 0; i < path_arr.length; ++i) {
-    const coords = path_arr[i]["geometry"]["coordinates"];
+// for (let i = 0; i < path_arr.length; ++i) {
+//     const coords = path_arr[i]["geometry"]["coordinates"];
 
-    // check ends!
+// //     // check ends!
 
-    // let sndclosest_start = getClosestPts(coords[0], 2)[1];
+//     let sndclosest_start = getClosestPts(coords[0], 2)[1];
 
-    // let sndclosest_end = getClosestPts(coords[-1], 2)[1];
+//     let sndclosest_end = getClosestPts(coords[coords.length - 1], 2)[1];
 
-    // for (let j = 0; j < coords.length; ++j) {
-    //     getClosestPts(coords[j], 3)[0];
-    // }
+// //     // for (let j = 0; j < coords.length; ++j) {
+// //     //     getClosestPts(coords[j], 3)[0];
+// //     // }
+// }
 
-}
-// console.log("rendered:", map.queryRenderedFeatures({
-//     layers: []
-// }).length);
 
 let last_added = 0;
+
+function bfs(point, critera) {
+
+}
+
+let explored_pts = new Set();
+let pt_to_set = (point) => point.ftIndex + "," + point.parentPathIndex;
+
+function dfs(starting_pt) {
+    let ptindex = starting_pt.ftIndex;
+    let lineindex = starting_pt.parentPathIndex;
+
+    // let pt_cursor = ptindex;
+    let queue = [point];
+    while (queue.length > 1) {
+        let pt = queue.shift();
+        if (!explored_pts.has(pt_to_set(pt))) {
+            explored_pts.add(pt_to_set(pt));
+            queue.push()
+        }
+    }
+}
 
 map.on('click', (e) => {
     let loc = e.lngLat;
@@ -290,7 +335,7 @@ map.on('click', (e) => {
     
     let locll = [loc.lng, loc.lat];
     // console.log(locll);
-    let pts = getClosestPts(locll, 5);
+    let pts = getNClosestPts(locll, 1);
     // let pt_coords = []
     // pts.forEach((w) => {
     //     pt_coords.push(w.coords)
@@ -298,9 +343,15 @@ map.on('click', (e) => {
     // })
 
     addPoints(pts.map(w => w.coord))
-    console.log(pts);
+    addLine(pts[0].parentPathIndex);
 
-    console.log(map.getStyle().layers);
+    bfs(pts[0], (w) => distance(pts[0], ))
+    // let line = 
+    
+
+    // console.log(pts);
+
+    // console.log(map.getStyle().layers);
 
     // console.log("rendered:", map.queryRenderedFeatures({
     // layers: ["points_layer_" + (pt_counter-1) + "_addPoints"],
