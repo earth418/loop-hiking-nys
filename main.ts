@@ -38,11 +38,11 @@ map.setStyle({
             }
         },
         "layers": [
-            {
-                "id": "satellite",
-                "type": "raster",
-                "source": "satelliteSrc"
-            },
+            // {
+            //     "id": "satellite",
+            //     "type": "raster",
+            //     "source": "satelliteSrc"
+            // },
             {
                 "id": "hillshade",
                 "type": "hillshade",
@@ -55,23 +55,23 @@ map.setStyle({
                 'type': 'line',
                 'source': 'dectrails_json',
                 'paint': {
-                    'line-color': '#dddddd',
+                    'line-color': '#aaaaaa',
                     'line-opacity': 0.8,
                     'line-width': 8,
                 }
             },
-            // {
-            //     "id": "state",
-            //     "source": "stateSrc",
-            //     "type": "fill",
-            //     "paint": {
-            //         'fill-opacity' : 0.5,
-            //         'fill-color': '#000000'
-            //         // 'line-color': '#770000',
-            //         // 'line-opacity': 0.8,
-            //         // 'line-width': 8,
-            //     }
-            // }
+            {
+                "id": "state",
+                "source": "stateSrc",
+                "type": "fill",
+                "paint": {
+                    'fill-opacity' : 0.5,
+                    'fill-color': '#000000'
+                    // 'line-color': '#770000',
+                    // 'line-opacity': 0.8,
+                    // 'line-width': 8,
+                }
+            }
         ],
 
         "terrain": {
@@ -233,11 +233,12 @@ for (let i = 0; i < path_arr.length; ++i) {
 
 }
 
+
 // console.log(Grid);
 
 const PI = 3.14159;
 
-function distance(ll1, ll2) {
+function distance(ll1 : number[], ll2 : number[]) {
     const R = 6371000;
     let [lat1, lon1] = ll1;
     let [lat2, lon2] = ll2;
@@ -252,7 +253,17 @@ function distance(ll1, ll2) {
     return R * c;
 }
 
-function allClosestPts(point) {
+interface LatLon {
+    lat: number;
+    lon: number;
+}
+
+interface Point {
+    
+}
+
+
+function allClosestPts(point : Point) {
     let mindist_pts = [];
 
     [-1, 0, 1].forEach((dx) => {
@@ -277,12 +288,12 @@ function allClosestPts(point) {
 
 function getNClosestPts(point, numclosest) {
     // var k = latlonToKey(point);
-    let mindist_pts = allClosestPts(point);
+    mindist_pts = allClosestPts(point);
 
     return mindist_pts.slice(0, numclosest).map(c => c.element);
 }
 function getPointsCloserThan(point, distance) {
-    let mindist_pts = allClosestPts(point);
+    mindist_pts = allClosestPts(point);
 
     return mindist_pts.filter(w => w.dist < distance).map(c => c.element);
 }
@@ -337,18 +348,11 @@ function dfs(starting_pt) {
             let next_pts = [];
 
             let trail = dectrails[pt.parentPathIndex];
-            if (pt.point.ftIndex > 0) {
-                let new_pt = pt;
-                new_pt.ftIndex--;
-                next_pts.push(new_pt);
-            }
-            if (pt.point.ftIndex < pt.parentPathIndex.length - 1) {
-                let new_pt = pt;
-                new_pt.ftIndex++;
-                next_pts.push(new_pt);
+            if () {
+                
             }
 
-            let closebyPts = getPointsCloserThan(pt.point.coord, 1000).filter((w) => w.pt)
+            let closebyPts = getPointsCloserThan(pt.point, 1000).filter((w) => w.pt)
             // let next_pts = 
             
             queue.push({"prevPts" : new_prevpts, "point": pt.point});
